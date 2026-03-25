@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"github/folkyyyy/preorder-api/internal/models" 
+	"github/folkyyyy/preorder-api/internal/models"
 	"gorm.io/gorm"
 )
 
@@ -9,6 +9,9 @@ import (
 type MenuRepository interface {
 	CreateMenu(menu *models.Menu) error
 	GetAllMenus() ([]models.Menu, error)
+	GetMenuByID(id uint) (*models.Menu, error)
+	UpdateMenu(menu *models.Menu) error
+	DeleteMenu(id uint) error
 }
 
 type menuRepository struct {
@@ -30,4 +33,38 @@ func (r *menuRepository) GetAllMenus() ([]models.Menu, error) {
 	var menus []models.Menu
 	err := r.db.Find(&menus).Error
 	return menus, err
+}
+
+// Get Menu by ID (Select จาก DB โดยใช้ ID)
+func (r *menuRepository) GetMenuByID(id uint) (*models.Menu, error) {
+	var menu models.Menu
+	err := r.db.First(&menu, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &menu, nil
+}
+
+// Update Menu
+func (r *menuRepository) UpdateMenu(menu *models.Menu) error {
+	result := r.db.Model(&models.Menu{}).Where("id = ?", menu.ID).Updates(menu)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+// Delete Menu
+func (r *menuRepository) DeleteMenu(id uint) error {
+	result := r.db.Delete(&models.Menu{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

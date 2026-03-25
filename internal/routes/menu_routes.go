@@ -12,4 +12,7 @@ func SetupMenuRoutes(router fiber.Router, handler *handlers.MenuHandler) {
 
 	menuGroup.Post("/", handler.CreateMenu) // POST /api/menu
 	menuGroup.Get("/", handler.GetAllMenus) // GET /api/menu
+	menuGroup.Get("/:id", handler.GetMenuByID) // GET /api/menu/:id
+	menuGroup.Put("/:id", handler.UpdateMenu) // PUT /api/menu/:id
+	menuGroup.Delete("/:id", handler.DeleteMenu) // DELETE /api/menu/:id
 }
