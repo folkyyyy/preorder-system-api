@@ -1,0 +1,55 @@
+# --- Environment Variables (สำคัญมาก!) ---
+.env
+.env.local
+.env.*.local
+*.env
+
+# --- Go Specific ---
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go build command
+bin/
+out/
+dist/
+
+# --- Dependency Management ---
+# แนะนำให้เก็บ go.mod และ go.sum ไว้ (ไม่ต้อง ignore)
+# แต่ถ้ามีการใช้ vendor folder และไม่ต้องการเอาขึ้น
+# vendor/
+
+# --- IDEs/Editors ---
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# JetBrains (GoLand, IntelliJ, etc.)
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Vim Swap Files
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-v][a-z]
+[._]sw[a-p]
+
+# --- OS Specific ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# --- Database / Tools ---
+# หากมีการใช้ SQLite หรือไฟล์ Log
+*.db
+*.log
