@@ -3,6 +3,7 @@ package main
 import (
 	"github/folkyyyy/preorder-api/config"
 	"github/folkyyyy/preorder-api/internal/handlers"
+	// "github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/repositories"
 	"github/folkyyyy/preorder-api/internal/routes"
 	"github/folkyyyy/preorder-api/internal/services"
@@ -45,9 +46,13 @@ func main() {
 	menuService := services.NewMenuService(menuRepo)
 	menuHandler := handlers.NewMenuHandler(menuService)
 
+	userRepo := repositories.NewUserRepository(config.DB)
+	authService := services.NewAuthService(userRepo)
+	authHandler := handlers.NewAuthHandler(authService)
+
 	// ---- Setup Routes ----
 	api := app.Group("/api")
-
+	routes.SetupAuthRoutes(api, authHandler)
 	routes.SetupMenuRoutes(api, menuHandler)
 
 	app.Get("/", func(c *fiber.Ctx) error {
