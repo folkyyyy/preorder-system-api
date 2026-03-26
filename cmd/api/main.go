@@ -50,10 +50,15 @@ func main() {
 	authService := services.NewAuthService(userRepo)
 	authHandler := handlers.NewAuthHandler(authService)
 
+	preorderRoundRepo := repositories.NewPreorderRoundRepository(config.DB)
+	preorderRoundService := services.NewPreorderRoundService(preorderRoundRepo)
+	preorderRoundHandler := handlers.NewPreorderRoundHandler(preorderRoundService)
+
 	// ---- Setup Routes ----
 	api := app.Group("/api")
 	routes.SetupAuthRoutes(api, authHandler)
 	routes.SetupMenuRoutes(api, menuHandler)
+	routes.SetupPreorderRoundRoutes(api, preorderRoundHandler)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
