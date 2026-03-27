@@ -9,6 +9,11 @@ import (
 
 // SetupPreorderRoundRoutes รับ Router group และ Handler เข้ามาเพื่อจัดการเส้นทาง
 func SetupPreorderRoundRoutes(router fiber.Router, handler *handlers.PreorderRoundHandler) {
-	roundGroup := router.Group("/preorder", middlewares.Protected())
-	roundGroup.Post("/", middlewares.AdminOnly(), handler.CreateRound)
+	roundGroup := router.Group("/preorder")
+	roundGroup.Post("/", middlewares.Protected(), middlewares.AdminOnly(), handler.CreateRound)
+	roundGroup.Get("/date-range", handler.GetRoundsByDateRange)
+
+	roundGroup.Get("/:id", middlewares.Protected(), handler.GetRoundByID)
+	roundGroup.Put("/:id", middlewares.Protected(), middlewares.AdminOnly(), handler.UpdateRound)
+	roundGroup.Delete("/:id", middlewares.Protected(), middlewares.AdminOnly(), handler.DeleteRound)
 }

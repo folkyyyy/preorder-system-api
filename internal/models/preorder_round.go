@@ -5,13 +5,20 @@ import (
 	"time"
 )
 
+type Status string
+
+// 2. กำหนดค่า Constants ที่อนุญาตให้ใช้ได้
+const (
+	StatusOpen Status = "open"
+	StatusClosed Status = "closed"
+)
+
 // รอบการรับพรีออเดอร์ (เช่น รอบวันเสาร์ที่ 28)
 type PreorderRound struct {
 	gorm.Model
 	Title        string    `gorm:"not null" json:"title"`        // ชื่อรอบ เช่น "รอบส่งวันศุกร์"
 	DeliveryDate time.Time `gorm:"not null" json:"deliveryDate"` // วันที่จัดส่ง/รับอาหาร
-	Status       string    `gorm:"default:'open'" json:"status"` // open, closed, completed
-
+	Status       Status    `gorm:"default:'open'" json:"status"` // open, closed
 	// 1 รอบ มีได้หลายเมนู
 	PreorderMenus []PreorderMenu `gorm:"foreignKey:PreorderRoundID"`
 }

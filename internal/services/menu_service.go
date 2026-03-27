@@ -1,7 +1,7 @@
 package services
 
 import (
-	"errors"
+	"github/folkyyyy/preorder-api/internal/apperrors"
 	"github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/repositories"
 )
@@ -25,7 +25,7 @@ func NewMenuService(repo repositories.MenuRepository) MenuService {
 
 func (s *menuService) CreateMenu(menu *models.Menu) error {
 	if menu.Price < 0 {
-		return errors.New("ราคาอาหารต้องไม่ติดลบ")
+		return apperrors.ErrPriceNegative
 	}
 
 	return s.repo.CreateMenu(menu)
@@ -41,7 +41,7 @@ func (s *menuService) GetMenuByID(id uint) (*models.Menu, error) {
 
 func (s *menuService) UpdateMenu(menu *models.Menu) error {
 	if menu.Price < 0 {
-		return errors.New("ราคาอาหารต้องไม่ติดลบ")
+		return apperrors.ErrPriceNegative
 	}
 	return s.repo.UpdateMenu(menu)
 }
