@@ -3,6 +3,8 @@ package main
 import (
 	"github/folkyyyy/preorder-api/config"
 	"github/folkyyyy/preorder-api/internal/handlers"
+	"github/folkyyyy/preorder-api/internal/jobs"
+
 	// "github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/repositories"
 	"github/folkyyyy/preorder-api/internal/routes"
@@ -37,6 +39,8 @@ func main() {
 	// if err != nil {
 	// 	log.Fatal("Failed to migrate database:", err)
 	// }
+
+	jobs.StartAutoCloseJob(config.DB)
 
 	// 3. สร้างแอป Fiber
 	app := fiber.New()
