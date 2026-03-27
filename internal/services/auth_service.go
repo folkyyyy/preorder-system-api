@@ -1,11 +1,11 @@
 package services
 
 import (
-	"errors"
-	"os"
-	"time"
+	"github/folkyyyy/preorder-api/internal/apperrors"
 	"github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/repositories"
+	"os"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -38,12 +38,12 @@ func (s *authService) Register(user *models.User) error {
 func (s *authService) Login(emailOrUserName string, password string) (string, error) {
 	user, err := s.repo.GetUserByEmailOrUserName(emailOrUserName, emailOrUserName)
 	if err != nil {
-		return "", errors.New("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+		return "", apperrors.ErrInvalidCredentials
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return "", errors.New("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+		return "", apperrors.ErrInvalidCredentials
 	}
 
 
