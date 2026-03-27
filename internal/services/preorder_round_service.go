@@ -13,6 +13,7 @@ type PreorderRoundService interface {
 	UpdateRoundWithMenus(round *models.PreorderRound, newMenus []models.PreorderMenu) error
 	DeleteRound(id uint) error
 	GetRoundsByDateRange(startDate, endDate time.Time) ([]models.PreorderRound, error)
+	ChangeRoundStatus(id uint, newStatus string) error
 }
 
 type preorderRoundService struct {
@@ -29,7 +30,7 @@ func (s *preorderRoundService) CreatePreorderRound(round *models.PreorderRound, 
 	}
 
 	if len(menus) == 0 {
-		return apperrors.ErrInvalidMenu 
+		return apperrors.ErrInvalidMenu
 	}
 
 	for _, menu := range menus {
@@ -82,7 +83,6 @@ func (s *preorderRoundService) UpdateRoundWithMenus(round *models.PreorderRound,
 		}
 	}
 
-
 	return s.repo.UpdateRoundWithMenus(round, newMenus)
 }
 
@@ -94,4 +94,12 @@ func (s *preorderRoundService) DeleteRound(id uint) error {
 // Get rounds by date range
 func (s *preorderRoundService) GetRoundsByDateRange(startDate, endDate time.Time) ([]models.PreorderRound, error) {
 	return s.repo.GetRoundsByDateRange(startDate, endDate)
+}
+
+// change round status
+func (s *preorderRoundService) ChangeRoundStatus(id uint, newStatus string) error {
+	if(newStatus != "open" && newStatus != "closed") {
+		return apperrors.ErrInvalidStatus
+	}
+	return s.repo.ChangeRoundStatus(id, newStatus)
 }

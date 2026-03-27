@@ -14,6 +14,7 @@ type PreorderRoundRepository interface {
 	UpdateRoundWithMenus(round *models.PreorderRound, newMenus []models.PreorderMenu) error
 	DeleteRound(id uint) error
 	GetRoundsByDateRange(startDate, endDate time.Time) ([]models.PreorderRound, error)
+	ChangeRoundStatus(id uint, newStatus string) error
 }
 
 type preorderRoundRepository struct {
@@ -140,4 +141,16 @@ func (r *preorderRoundRepository) GetRoundsByDateRange(startDate, endDate time.T
 		Find(&rounds).Error
 	
 	return rounds, err
+}
+
+// change status
+func (r *preorderRoundRepository) ChangeRoundStatus(id uint, newStatus string) error {
+	result := r.db.Model(&models.PreorderRound{}).Where("id = ?", id).Update("status", newStatus)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

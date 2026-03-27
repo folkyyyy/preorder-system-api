@@ -16,4 +16,6 @@ func SetupPreorderRoundRoutes(router fiber.Router, handler *handlers.PreorderRou
 	roundGroup.Get("/:id", middlewares.Protected(), handler.GetRoundByID)
 	roundGroup.Put("/:id", middlewares.Protected(), middlewares.AdminOnly(), handler.UpdateRound)
 	roundGroup.Delete("/:id", middlewares.Protected(), middlewares.AdminOnly(), handler.DeleteRound)
+
+	roundGroup.Patch("/:id/status", middlewares.Protected(), middlewares.AdminOnly(), handler.ChangeRoundStatus)
 }

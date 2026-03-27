@@ -202,3 +202,44 @@ func (h *PreorderRoundHandler) GetRoundsByDateRange(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"data": rounds})
 }
+
+type ChangeStatusInput struct {
+	Status string `json:"status"`
+}
+
+// change status
+func (h *PreorderRoundHandler) ChangeRoundStatus(c *fiber.Ctx) error {
+	id := c.Params("id")
+	roundid, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "ID ไม่ถูกต้อง"})
+	}
+	var input ChangeStatusInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "รูปแบบข้อมูลไม่ถูกต้อง"})
+	}
+	if err := h.service.ChangeRoundStatus(uint(roundid), input.Status); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "ไม่มีข้อมูลรอบพรีออเดอร์ที่ต้องการ", // หารอบพรีออเดอร์นี้ไม่เจอ! (ส่ง 404 กลับไป)
+			})
+		}
+		if errors.Is(err,apperrors.ErrInvalidStatus) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	statusText := ""
+
+	if input.Status == "closed" {
+		statusText = "ปิดรับพรีออเดอร์สำเร็จ"
+	}
+	if input.Status == "open" {
+		statusText = "เปิดรับพรีออเดอร์สำเร็จ"
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": statusText,
+	})
+}
