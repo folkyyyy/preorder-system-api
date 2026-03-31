@@ -5,7 +5,7 @@ import "gorm.io/gorm"
 // ข้อมูลหลักของใบออเดอร์ลูกค้า
 type Order struct {
 	gorm.Model
-	UserID           uint          `gorm:"not null" json:"userId"`          // ใครเป็นคนสั่ง
+	UserID           *uint          `json:"userId"`          // ใครเป็นคนสั่ง
 	Name             string        `gorm:"not null" json:"name"`            // ชื่อผู้รับ
 	PreorderRoundID  uint          `gorm:"not null" json:"preorderRoundId"` // ออเดอร์นี้สั่งในรอบไหน
 	PreorderRound    PreorderRound `gorm:"foreignKey:PreorderRoundID"`
