@@ -11,7 +11,7 @@ import (
 func SetupOrderRoutes(router fiber.Router, handler *handlers.OrderHandler) {
 	orderGroup := router.Group("/orders")
 	orderGroup.Post("/", middlewares.Protected(), handler.CreateOrder)
-	// orderGroup.Get("/", middlewares.Protected(), handler.ListOrders)
+	orderGroup.Get("/round/:roundId", middlewares.Protected(), handler.GetOrdersByRound)
 	// orderGroup.Get("/:id", middlewares.Protected(), handler.GetOrderByID)
 }
 

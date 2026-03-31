@@ -8,6 +8,7 @@ import (
 
 type OrderService interface {
 	CreateOrder(order *models.Order, items []models.OrderItem) error
+	GetOrdersByRoundID(roundID uint) ([]models.Order, error)
 }
 
 type orderService struct {
@@ -54,4 +55,8 @@ func (s *orderService) CreateOrder(order *models.Order, items []models.OrderItem
 
 	// 2. ถ้าผ่านหมด ส่งให้ Repository จัดการต่อ (หักโควต้า + บันทึกลง DB)
 	return s.repo.CreateOrder(order, items)
+}
+
+func (s *orderService) GetOrdersByRoundID(roundID uint) ([]models.Order, error) {
+	return s.repo.GetOrdersByRoundID(roundID)
 }

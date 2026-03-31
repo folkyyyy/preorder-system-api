@@ -3,6 +3,7 @@ package handlers
 import (
 	"github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/services"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -28,6 +29,7 @@ type CreateOrderInput struct {
 	DeliveryLocation string           `json:"deliveryLocation"`
 	Items            []OrderItemInput `json:"items"`
 }
+
 // ------------------------------
 
 func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
@@ -38,8 +40,21 @@ func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "รูปแบบข้อมูลไม่ถูกต้อง"})
 	}
 
+	tokenRole := c.Locals("role").(string)
+	tokenUserId := c.Locals("user_id").(uint)
+
+	var finalUserId *uint
+
+	switch tokenRole {
+	case "user":
+		finalUserId = &tokenUserId
+	case "admin":
+		finalUserId = nil
+	}
+
 	// 2. ประกอบร่าง Model ตาราง Order
 	order := models.Order{
+		UserID:           finalUserId,
 		PreorderRoundID:  input.PreorderRoundID,
 		Name:             input.Name,
 		DeliveryLocation: input.DeliveryLocation,
@@ -70,5 +85,37 @@ func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
 	// 5. ตอบกลับเมื่อสำเร็จ
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "บันทึกรายการสั่งซื้อสำเร็จ",
+	})
+}
+
+func (h *OrderHandler) GetOrdersByRound(c *fiber.Ctx) error {
+	// 1. รับ ID รอบพรีออเดอร์จาก URL (เช่น /api/orders/round/1)
+	idParam := c.Params("roundId")
+	roundID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "รูปแบบ ID รอบพรีออเดอร์ไม่ถูกต้อง",
+		})
+	}
+
+	// 2. ส่งให้ Service ดึงข้อมูล
+	orders, err := h.service.GetOrdersByRoundID(uint(roundID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "ไม่สามารถดึงข้อมูลออเดอร์ได้",
+		})
+	}
+
+	// 3. ถ้าไม่มีออเดอร์เลย ส่งเป็น Array ว่างกลับไป (Frontend จะได้ไม่พัง)
+	if len(orders) == 0 {
+		return c.Status(fiber.StatusNoContent).JSON(fiber.Map{
+			"data":    []models.Order{},
+			"message": "ยังไม่มีรายการสั่งซื้อในรอบนี้",
+		})
+	}
+
+	// 4. ส่งข้อมูลกลับไป
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"data": orders,
 	})
 }

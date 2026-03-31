@@ -12,6 +12,7 @@ import (
 
 type OrderRepository interface {
 	CreateOrder(order *models.Order, items []models.OrderItem) error
+	GetOrdersByRoundID(roundID uint) ([]models.Order, error)
 }
 
 type orderRepository struct {
@@ -94,4 +95,21 @@ func (r *orderRepository) CreateOrder(order *models.Order, items []models.OrderI
 
 	// 10. ทุกอย่างผ่านฉลุย ยืนยันการบันทึก!
 	return tx.Commit().Error
+}
+
+
+// สำหรับดึงบิลทั้งหมดในรอบนั้นๆ มาแสดงในหน้ารายการบิล (Order List) ของแอดมิน
+func (r *orderRepository) GetOrdersByRoundID(roundID uint) ([]models.Order, error) {
+	var orders []models.Order
+
+	err := r.db.
+		Preload("User"). // ดึงข้อมูล User (ถ้ามี, ถ้าเป็น NULL มันก็จะไม่พังครับ)
+		Preload("OrderItems"). // 1. ดึงรายการอาหารในบิล
+		Preload("OrderItems.PreorderMenu"). // 2. ดึงข้อมูลว่าสั่งจากโควต้าไหน
+		Preload("OrderItems.PreorderMenu.Menu"). // 3.  ดึงชื่ออาหารและรูปภาพจากตารางเมนูหลักมาโชว์!
+		Where("preorder_round_id = ?", roundID).
+		Order("created_at DESC"). // เรียงบิลใหม่ล่าสุดไว้บนสุด
+		Find(&orders).Error
+
+	return orders, err
 }

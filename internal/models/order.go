@@ -5,10 +5,11 @@ import "gorm.io/gorm"
 // ข้อมูลหลักของใบออเดอร์ลูกค้า
 type Order struct {
 	gorm.Model
-	UserID           *uint          `json:"userId"`          // ใครเป็นคนสั่ง
+	UserID           *uint         `json:"userId"`                          // ใครเป็นคนสั่ง
+	User             User          `gorm:"foreignKey:UserID" json:"-"`      // ข้อมูลผู้ใช้ที่สั่ง
 	Name             string        `gorm:"not null" json:"name"`            // ชื่อผู้รับ
 	PreorderRoundID  uint          `gorm:"not null" json:"preorderRoundId"` // ออเดอร์นี้สั่งในรอบไหน
-	PreorderRound    PreorderRound `gorm:"foreignKey:PreorderRoundID"`
+	PreorderRound    PreorderRound `gorm:"foreignKey:PreorderRoundID" json:"-"`
 	DeliveryLocation string        `json:"deliveryLocation"`
 	TotalAmount      float64       `json:"totalAmount"`
 	Status           string        `gorm:"default:'pending'" json:"status"` // pending, paid, completed
