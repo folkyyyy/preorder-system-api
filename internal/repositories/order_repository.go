@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github/folkyyyy/preorder-api/internal/apperrors"
 	"github/folkyyyy/preorder-api/internal/models"
@@ -180,20 +182,63 @@ func (r *orderRepository) UpdateOrderStatus(orderID uint, newStatus string) erro
 }
 
 func (r *orderRepository) GetKitchenSummary(roundID uint) ([]models.KitchenSummary, error) {
-	var summary []models.KitchenSummary
+	var rawData []models.RawKitchenSummary // 🌟 รับข้อมูลดิบมาก่อน
 
+	// 1. คำสั่ง SQL เดิมของคุณ (สมบูรณ์แบบแล้วครับ)
 	err := r.db.Table("order_items").
-		Select("menus.id as menu_id, menus.name as menu_name, order_items.is_special, SUM(order_items.quantity) as total_quantity, SUM(order_items.quantity * order_items.price_at_order) as total_revenue").
+		Select("menus.id as menu_id, menus.name as menu_name, order_items.is_special, order_items.note, SUM(order_items.quantity) as total_quantity, SUM(order_items.quantity * order_items.price_at_order) as total_revenue").
 		Joins("JOIN orders ON orders.id = order_items.order_id").
 		Joins("JOIN preorder_menus ON preorder_menus.id = order_items.preorder_menu_id").
 		Joins("JOIN menus ON menus.id = preorder_menus.menu_id").
 		Where("orders.preorder_round_id = ?", roundID).
 		Where("orders.status != ?", "cancelled").
 		Where("orders.deleted_at IS NULL AND order_items.deleted_at IS NULL").
-		Group("menus.id, menus.name, order_items.is_special").
-		Scan(&summary).Error
+		Group("menus.id, menus.name, order_items.is_special, order_items.note").
+		Scan(&rawData).Error
 
-	return summary, err
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. 🌟 ใช้ Go ยุบรวมข้อมูล (Merge)
+	summaryMap := make(map[string]*models.KitchenSummary)
+
+	for _, row := range rawData {
+		// สร้าง Key จัดกลุ่ม เช่น "15-false" (แกงฮังเล-ธรรมดา)
+		key := fmt.Sprintf("%d-%t", row.MenuID, row.IsSpecial)
+
+		// ถ้ายังไม่มีกลุ่มนี้ใน Map ให้สร้างกล่องเปล่าขึ้นมาก่อน
+		if _, exists := summaryMap[key]; !exists {
+			summaryMap[key] = &models.KitchenSummary{
+				MenuID:        row.MenuID,
+				MenuName:      row.MenuName,
+				IsSpecial:     row.IsSpecial,
+				TotalQuantity: 0,
+				TotalRevenue:  0,
+				Notes:         []string{}, // เตรียม Array ว่างไว้ใส่โน๊ต
+			}
+		}
+
+		// นำยอดมารวมกัน
+		summaryMap[key].TotalQuantity += row.TotalQuantity
+		summaryMap[key].TotalRevenue += row.TotalRevenue
+
+		// จัดการ Note (ถ้ามีข้อความ ให้เอามาใส่ Array)
+		cleanNote := strings.TrimSpace(row.Note)
+		if cleanNote != "" {
+			// ท่าไม้ตาย: ระบุจำนวนถุงในโน๊ตให้แม่ครัวดูด้วย เช่น "ไม่ใส่ผัก (2)"
+			noteWithQty := fmt.Sprintf("%s (%d)", cleanNote, row.TotalQuantity)
+			summaryMap[key].Notes = append(summaryMap[key].Notes, noteWithQty)
+		}
+	}
+
+	// 3. แปลง Map กลับเป็น Array (Slice) เพื่อเตรียมส่งออก
+	var finalSummary []models.KitchenSummary
+	for _, v := range summaryMap {
+		finalSummary = append(finalSummary, *v)
+	}
+
+	return finalSummary, nil
 }
 
 func (r *orderRepository) GetOrderById(orderID uint) (*models.Order, error) {
