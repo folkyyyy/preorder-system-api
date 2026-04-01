@@ -4,7 +4,6 @@ import (
 	"github/folkyyyy/preorder-api/config"
 	"github/folkyyyy/preorder-api/internal/handlers"
 	"github/folkyyyy/preorder-api/internal/jobs"
-	"github/folkyyyy/preorder-api/internal/models"
 	_ "github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/repositories"
 	"github/folkyyyy/preorder-api/internal/routes"
@@ -13,6 +12,7 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 )
 
@@ -27,23 +27,29 @@ func main() {
 	config.ConnectDB()
 
 	// 2.5 ทำ AutoMigrate เพื่อสร้างตาราง
-	log.Println("Running Auto Migration...")
-	err = config.DB.AutoMigrate(
-		&models.User{},
-		&models.Menu{},
-		&models.PreorderRound{},
-		&models.PreorderMenu{},
-		&models.Order{},
-		&models.OrderItem{},
-	)
-	if err != nil {
-		log.Fatal("Failed to migrate database:", err)
-	}
+	// log.Println("Running Auto Migration...")
+	// err = config.DB.AutoMigrate(
+	// 	&models.User{},
+	// 	&models.Menu{},
+	// 	&models.PreorderRound{},
+	// 	&models.PreorderMenu{},
+	// 	&models.Order{},
+	// 	&models.OrderItem{},
+	// )
+	// if err != nil {
+	// 	log.Fatal("Failed to migrate database:", err)
+	// }
 
 	jobs.StartAutoCloseJob(config.DB)
 
 	// 3. สร้างแอป Fiber
 	app := fiber.New()
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "http://localhost:3000",                       // อนุญาตให้ Next.js (Port 3000) เข้าถึง API ได้
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization", // ต้องมี Authorization เพื่อส่ง JWT
+		AllowMethods: "GET, POST, HEAD, PUT, DELETE, PATCH",
+	}))
 
 	// ---- Dependency Injection ----
 	menuRepo := repositories.NewMenuRepository(config.DB)
