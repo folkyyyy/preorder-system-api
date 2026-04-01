@@ -27,5 +27,6 @@ var (
 	ErrRoundClosed      = errors.New("ไม่สามารถสร้างบิลได้ รอบพรีออเดอร์นี้ปิดรับไปแล้ว")
 	ErrMenuNotFound     = errors.New("ไม่พบเมนูนี้ในรอบพรีออเดอร์ที่เลือก")
 	ErrQuotaExceeded    = errors.New("โควต้าอาหารไม่เพียงพอสำหรับรายการนี้")
+	ErrInvalidOrderStatus = errors.New("สถานะใหม่ของบิลไม่ถูกต้อง ต้องเป็น 'pending', 'paid' หรือ 'cancelled' เท่านั้น")
 )
 

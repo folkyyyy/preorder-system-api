@@ -13,6 +13,7 @@ import (
 type OrderRepository interface {
 	CreateOrder(order *models.Order, items []models.OrderItem) error
 	GetOrdersByRoundID(roundID uint) ([]models.Order, error)
+	UpdateOrderStatus(orderID uint, newStatus string) error
 }
 
 type orderRepository struct {
@@ -112,4 +113,54 @@ func (r *orderRepository) GetOrdersByRoundID(roundID uint) ([]models.Order, erro
 		Find(&orders).Error
 
 	return orders, err
+}
+
+func (r *orderRepository) UpdateOrderStatus(orderID uint, newStatus string) error {
+	// เริ่ม Transaction เพราะมีการแก้ไขข้อมูลหลายตารางพร้อมกัน
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	var order models.Order
+	// 1. ดึงข้อมูลออเดอร์นั้นขึ้นมา พร้อมกับรายการอาหารข้างใน (เพื่อเอาไปคืนโควต้า)
+	if err := tx.Preload("OrderItems").First(&order, orderID).Error; err != nil {
+		tx.Rollback()
+		return errors.New("ไม่พบออเดอร์ที่ต้องการแก้ไข")
+	}
+
+	// 2. ดักทาง: ถ้าสถานะเดิมตรงกับสถานะใหม่ ไม่ต้องทำอะไร
+	if order.Status == newStatus {
+		tx.Rollback()
+		return errors.New("ออเดอร์นี้มีสถานะเป็น " + newStatus + " อยู่แล้ว")
+	}
+
+	// 3. ดักทาง: ถ้าบิลถูกยกเลิกไปแล้ว จะไม่ยอมให้เปลี่ยนกลับมาเปิดใหม่ (ป้องกันโควต้าพัง)
+	if order.Status == "cancelled" {
+		tx.Rollback()
+		return errors.New("บิลที่ถูกยกเลิกไปแล้ว ไม่สามารถแก้ไขสถานะได้")
+	}
+
+	// : ถ้าแอดมินสั่งยกเลิกบิล เราต้อง "คืนโควต้า" ให้ทุกเมนูในบิลนี้
+	if newStatus == "cancelled" {
+		for _, item := range order.OrderItems {
+			// ใช้ gorm.Expr เพื่อสั่ง Database ว่า "เอาค่า ordered_count ลบออกด้วยจำนวนในบิลนะ"
+			if err := tx.Model(&models.PreorderMenu{}).
+				Where("id = ?", item.PreorderMenuID).
+				UpdateColumn("ordered_count", gorm.Expr("ordered_count - ?", item.Quantity)).Error; err != nil {
+				
+				tx.Rollback()
+				return errors.New("เกิดข้อผิดพลาดในการคืนโควต้าอาหาร")
+			}
+		}
+	}
+
+	// 5. อัปเดตสถานะใหม่ลงในบิล
+	if err := tx.Model(&order).UpdateColumn("status", newStatus).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 6. ผ่านฉลุย ยืนยันการเปลี่ยนแปลง!
+	return tx.Commit().Error
 }

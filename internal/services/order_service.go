@@ -9,6 +9,7 @@ import (
 type OrderService interface {
 	CreateOrder(order *models.Order, items []models.OrderItem) error
 	GetOrdersByRoundID(roundID uint) ([]models.Order, error)
+	UpdateOrderStatus(orderID uint, newStatus string) error
 }
 
 type orderService struct {
@@ -60,3 +61,21 @@ func (s *orderService) CreateOrder(order *models.Order, items []models.OrderItem
 func (s *orderService) GetOrdersByRoundID(roundID uint) ([]models.Order, error) {
 	return s.repo.GetOrdersByRoundID(roundID)
 }
+
+func (s *orderService) UpdateOrderStatus(orderID uint, newStatus string) error {
+	// 1. ดักตรวจสอบความถูกต้องของ Status ก่อน
+	validStatuses := map[string]bool{
+		"pending":   true,
+		"paid":      true,
+		"cancelled": true,
+	}
+
+	if !validStatuses[newStatus] {
+		return apperrors.ErrInvalidOrderStatus
+	}
+
+	// 2. ถ้าสถานะถูกต้อง ส่งต่อให้ Repository จัดการ Database และเรื่องโควต้า
+	return s.repo.UpdateOrderStatus(orderID, newStatus)
+}
+
+

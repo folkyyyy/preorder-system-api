@@ -4,6 +4,7 @@ import (
 	"github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/services"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -89,7 +90,6 @@ func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
 }
 
 func (h *OrderHandler) GetOrdersByRound(c *fiber.Ctx) error {
-	// 1. รับ ID รอบพรีออเดอร์จาก URL (เช่น /api/orders/round/1)
 	idParam := c.Params("roundId")
 	roundID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
@@ -117,5 +117,42 @@ func (h *OrderHandler) GetOrdersByRound(c *fiber.Ctx) error {
 	// 4. ส่งข้อมูลกลับไป
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data": orders,
+	})
+}
+
+type UpdateOrderStatusInput struct {
+	Status string `json:"status"`
+}
+
+func (h *OrderHandler) UpdateOrderStatus(c *fiber.Ctx) error {
+	idParam := c.Params("id")
+	orderID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "รูปแบบ ID ออเดอร์ไม่ถูกต้อง",
+		})
+	}
+
+	// 2. รับข้อมูล Status จาก Body JSON
+	var input UpdateOrderStatusInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "รูปแบบข้อมูลไม่ถูกต้อง",
+		})
+	}
+
+	// 3. ทำความสะอาดข้อมูล (ตัดช่องว่างหน้าหลัง และแปลงเป็นตัวพิมพ์เล็ก)
+	cleanStatus := strings.ToLower(strings.TrimSpace(input.Status))
+
+	// 4. ส่งให้ Service ทำงาน
+	if err := h.service.UpdateOrderStatus(uint(orderID), cleanStatus); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(), 
+		})
+	}
+
+	// 5. ตอบกลับเมื่อสำเร็จ
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "อัปเดตสถานะออเดอร์สำเร็จ",
 	})
 }
