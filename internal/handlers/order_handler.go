@@ -22,6 +22,7 @@ type OrderItemInput struct {
 	PreorderMenuID uint   `json:"preorderMenuId"`
 	Quantity       int    `json:"quantity"`
 	Note           string `json:"note"`
+	IsSpecial      bool   `json:"isSpecial"`
 }
 
 type CreateOrderInput struct {
@@ -77,6 +78,7 @@ func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
 			PreorderMenuID: item.PreorderMenuID,
 			Quantity:       item.Quantity,
 			Note:           item.Note,
+			IsSpecial:      item.IsSpecial,
 		})
 	}
 
@@ -265,7 +267,8 @@ func (h *OrderHandler) UpdateOrderDetails(c *fiber.Ctx) error {
 		newItems = append(newItems, models.OrderItem{
 			PreorderMenuID: item.PreorderMenuID,
 			Quantity:       item.Quantity,
-			// Note: item.Note, // ถ้าใน OrderItemInput ของคุณมีช่อง Note (หมายเหตุ) ให้เปิดคอมเมนต์บรรทัดนี้ด้วยครับ
+			Note:           item.Note,
+			IsSpecial:      item.IsSpecial,
 		})
 	}
 
