@@ -42,13 +42,16 @@ func (h *OrderHandler) CreateOrder(c *fiber.Ctx) error {
 	}
 
 	tokenRole := c.Locals("role").(string)
-	tokenUserId := c.Locals("user_id").(uint)
+	var tokenUserID uint
+	if idVal, ok := c.Locals("userID").(float64); ok {
+		tokenUserID = uint(idVal)
+	}
 
 	var finalUserId *uint
 
 	switch tokenRole {
 	case "user":
-		finalUserId = &tokenUserId
+		finalUserId = &tokenUserID
 	case "admin":
 		finalUserId = nil
 	}
@@ -207,5 +210,74 @@ func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data": order,
+	})
+}
+
+type UpdateOrderInput struct {
+	Name             string           `json:"name"`
+	DeliveryLocation string           `json:"deliveryLocation"`
+	Items            []OrderItemInput `json:"items"` // ใช้ Struct เดิมที่คุณเคยสร้างไว้ตอน Create ได้เลย
+}
+
+func (h *OrderHandler) UpdateOrderDetails(c *fiber.Ctx) error {
+	// 1. รับ ID ของบิลจาก URL
+	idParam := strings.TrimSpace(c.Params("id"))
+	orderID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "รูปแบบ ID ออเดอร์ไม่ถูกต้อง",
+		})
+	}
+
+	// 2. รับข้อมูล JSON จาก Request Body
+	var input UpdateOrderInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "รูปแบบข้อมูลไม่ถูกต้อง",
+		})
+	}
+
+	tokenRole := c.Locals("role").(string)
+	var tokenUserID uint
+	if idVal, ok := c.Locals("userID").(float64); ok {
+		tokenUserID = uint(idVal)
+	}
+
+	var finalUserId *uint
+
+	switch tokenRole {
+	case "user":
+		finalUserId = &tokenUserID
+	case "admin":
+		finalUserId = nil
+	}
+
+	// 3. ประกอบร่างข้อมูลพื้นฐานของบิล (ข้อมูลที่อาจจะเปลี่ยน)
+	updateData := &models.Order{
+		UserID:           finalUserId,
+		Name:             input.Name,
+		DeliveryLocation: input.DeliveryLocation,
+	}
+
+	// 4. แปลงรายการอาหาร (Items) จาก Input ให้กลายเป็น Model ของ GORM
+	var newItems []models.OrderItem
+	for _, item := range input.Items {
+		newItems = append(newItems, models.OrderItem{
+			PreorderMenuID: item.PreorderMenuID,
+			Quantity:       item.Quantity,
+			// Note: item.Note, // ถ้าใน OrderItemInput ของคุณมีช่อง Note (หมายเหตุ) ให้เปิดคอมเมนต์บรรทัดนี้ด้วยครับ
+		})
+	}
+
+	// 5. ส่งให้ Service ทำงาน
+	if err := h.service.UpdateOrder(uint(orderID), updateData, newItems); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// 6. ส่งผลลัพธ์กลับเมื่อสำเร็จ
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "แก้ไขข้อมูลออเดอร์และอัปเดตโควต้าสำเร็จ",
 	})
 }

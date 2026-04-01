@@ -16,6 +16,7 @@ type OrderRepository interface {
 	UpdateOrderStatus(orderID uint, newStatus string) error
 	GetKitchenSummary(roundID uint) ([]models.KitchenSummary, error)
 	GetOrderById(orderID uint) (*models.Order, error)
+	UpdateOrder(orderID uint, updateData *models.Order, newItems []models.OrderItem) error
 }
 
 type orderRepository struct {
@@ -200,4 +201,110 @@ func(r *orderRepository) GetOrderById(orderID uint) (*models.Order, error) {
 		return nil, err
 	}
 	return &order, nil
+}
+
+func (r *orderRepository) UpdateOrder(orderID uint, updateData *models.Order, newItems []models.OrderItem) error {
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	// 1. ดึงข้อมูลออเดอร์เก่า และรายการอาหารเดิมขึ้นมา
+	var existingOrder models.Order
+	if err := tx.Preload("OrderItems").First(&existingOrder, orderID).Error; err != nil {
+		tx.Rollback()
+		return errors.New("ไม่พบออเดอร์ที่ต้องการแก้ไข")
+	}
+
+	//  ดักทาง: ถ้าบิลถูกยกเลิก (cancelled) ไปแล้ว จะไม่ยอมให้แก้รายการอาหารเด็ดขาด!
+	if existingOrder.Status == "cancelled" {
+		tx.Rollback()
+		return errors.New("ออเดอร์นี้ถูกยกเลิกไปแล้ว ไม่สามารถแก้ไขได้")
+	}
+
+	if existingOrder.Status == "paid" {
+		tx.Rollback()
+		return errors.New("ออเดอร์นี้สำเร็จแล้ว ไม่สามารถแก้ไขได้")
+	}
+
+	//  2. ล้างไพ่ (Wipe): คืนโควต้าอาหารเดิมทั้งหมดกลับเข้าระบบ
+	for _, oldItem := range existingOrder.OrderItems {
+		if err := tx.Model(&models.PreorderMenu{}).
+			Where("id = ?", oldItem.PreorderMenuID).
+			UpdateColumn("ordered_count", gorm.Expr("ordered_count - ?", oldItem.Quantity)).Error; err != nil {
+			tx.Rollback()
+			return errors.New("เกิดข้อผิดพลาดในการคืนโควต้าเดิม")
+		}
+	}
+
+	//  3. ลบรายการอาหารเดิมทิ้งให้เกลี้ยง (ใช้ Unscoped เพื่อลบขาดออกจาก DB เลย ไม่เปลืองพื้นที่)
+	if err := tx.Unscoped().Where("order_id = ?", orderID).Delete(&models.OrderItem{}).Error; err != nil {
+		tx.Rollback()
+		return errors.New("เกิดข้อผิดพลาดในการล้างรายการอาหารเดิม")
+	}
+
+	var newTotalAmount float64
+
+	//  4. ตรวจสอบโควต้า และหักโควต้าสำหรับ "รายการใหม่" (Recreate)
+	for i := range newItems {
+		var preorderMenu models.PreorderMenu
+
+		// ล็อก Row เพื่อป้องกันคนอื่นแย่งโควต้าระหว่างที่เรากำลังคำนวณ
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND preorder_round_id = ?", newItems[i].PreorderMenuID, existingOrder.PreorderRoundID).
+			First(&preorderMenu).Error; err != nil {
+			
+			tx.Rollback()
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("มีเมนูที่ไม่ได้อยู่ในรอบพรีออเดอร์นี้หลงเข้ามา")
+			}
+			return err
+		}
+
+		// เช็คว่าโควต้าพอไหม? (ของใหม่ที่สั่ง > โควต้าทั้งหมด - ยอดที่คนอื่นสั่งไปแล้ว)
+		if preorderMenu.OrderedCount + newItems[i].Quantity > preorderMenu.Quota {
+			tx.Rollback()
+			return errors.New("โควต้าอาหารบางรายการไม่เพียงพอ")
+		}
+
+		// ดึงราคาจากตารางหลักมาอัปเดตใหม่ (เผื่อแอดมินแก้ราคาเมนูหลักไปแล้ว)
+		var menu models.Menu
+		if err := tx.First(&menu, preorderMenu.MenuID).Error; err != nil {
+			tx.Rollback()
+			return errors.New("เกิดข้อผิดพลาดในการดึงราคาเมนู")
+		}
+
+		// ประกอบร่าง OrderItem ตัวใหม่
+		newItems[i].OrderID = orderID
+		newItems[i].PriceAtOrder = menu.Price
+		newTotalAmount += menu.Price * float64(newItems[i].Quantity)
+
+		// 5. หักโควต้าใหม่ (บวก ordered_count เพิ่ม)
+		if err := tx.Model(&preorderMenu).
+			UpdateColumn("ordered_count", preorderMenu.OrderedCount + newItems[i].Quantity).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// 6. บันทึกรายการอาหารชุดใหม่ลง Database
+	if err := tx.Create(&newItems).Error; err != nil {
+		tx.Rollback()
+		return errors.New("เกิดข้อผิดพลาดในการบันทึกรายการอาหารใหม่")
+	}
+
+	existingOrder.OrderItems = nil // ป้องกัน GORM สับสนระหว่างรายการเก่าและใหม่
+
+	// 7. อัปเดตข้อมูลทั่วไปของบิลหลัก (เผื่อแอดมินแก้ชื่อ หรือ สถานที่ส่ง) และยอดเงินรวมใหม่
+	if err := tx.Model(&existingOrder).Updates(map[string]interface{}{
+		"name":              updateData.Name,
+		"delivery_location": updateData.DeliveryLocation,
+		"total_amount":      newTotalAmount,
+	}).Error; err != nil {
+		tx.Rollback()
+		return errors.New("เกิดข้อผิดพลาดในการอัปเดตข้อมูลบิลหลัก")
+	}
+
+	// 8. ผ่านฉลุยทุกด่าน ยืนยันการทำธุรกรรม!
+	return tx.Commit().Error
 }

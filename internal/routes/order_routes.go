@@ -15,5 +15,6 @@ func SetupOrderRoutes(router fiber.Router, handler *handlers.OrderHandler) {
 	orderGroup.Patch("/:id/status", middlewares.Protected(),middlewares.AdminOnly(), handler.UpdateOrderStatus)
 	orderGroup.Get("/kitchen-summary/round/:roundId", middlewares.Protected(),middlewares.AdminOnly(), handler.GetKitchenSummary)
 	orderGroup.Get("/:id", middlewares.Protected(), handler.GetOrderByID)
+	orderGroup.Put("/:id", middlewares.Protected(), handler.UpdateOrderDetails)
 }
 

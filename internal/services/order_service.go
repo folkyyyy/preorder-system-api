@@ -12,6 +12,7 @@ type OrderService interface {
 	UpdateOrderStatus(orderID uint, newStatus string) error
 	GetKitchenSummary(roundID uint) ([]models.KitchenSummary, error)
 	GetOrderById(orderID uint) (*models.Order, error)
+	UpdateOrder(orderID uint, updateData *models.Order, newItems []models.OrderItem) error
 }
 
 type orderService struct {
@@ -87,4 +88,15 @@ func (s *orderService) GetKitchenSummary(roundID uint) ([]models.KitchenSummary,
 
 func (s *orderService) GetOrderById(orderID uint) (*models.Order, error) {
 	return s.repo.GetOrderById(orderID)
+}
+
+func (s *orderService) UpdateOrder(orderID uint, updateData *models.Order, newItems []models.OrderItem) error {
+	// ดักทาง: บิลนึงควรต้องมีอาหารอย่างน้อย 1 อย่าง ไม่งั้นก็ควรใช้วิธียกเลิกบิลแทน
+	if len(newItems) == 0 {
+		return apperrors.ErrEmptyOrderItems
+	}
+
+
+	// ส่งต่อให้ Repository ทำการ Wipe & Recreate สุดโหดของเรา
+	return s.repo.UpdateOrder(orderID, updateData, newItems)
 }
