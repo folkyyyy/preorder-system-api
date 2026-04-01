@@ -156,3 +156,32 @@ func (h *OrderHandler) UpdateOrderStatus(c *fiber.Ctx) error {
 		"message": "อัปเดตสถานะออเดอร์สำเร็จ",
 	})
 }
+
+func (h *OrderHandler) GetKitchenSummary(c *fiber.Ctx) error {
+	idParam := c.Params("roundId")
+	roundID, err := strconv.ParseUint(strings.TrimSpace(idParam), 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "รูปแบบ ID รอบพรีออเดอร์ไม่ถูกต้อง",
+		})
+	}
+
+	summary, err := h.service.GetKitchenSummary(uint(roundID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "ไม่สามารถดึงข้อมูลสรุปยอดพรีออเดอร์รอบนี้ได้",
+		})
+	}
+
+	// ถ้ายังไม่มีออเดอร์เลย
+	if len(summary) == 0 {
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"data":    []models.KitchenSummary{},
+			"message": "ยังไม่มียอดสั่งอาหารสำหรับรอบนี้",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"data": summary,
+	})
+}

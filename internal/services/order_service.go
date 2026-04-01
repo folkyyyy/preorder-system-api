@@ -10,6 +10,7 @@ type OrderService interface {
 	CreateOrder(order *models.Order, items []models.OrderItem) error
 	GetOrdersByRoundID(roundID uint) ([]models.Order, error)
 	UpdateOrderStatus(orderID uint, newStatus string) error
+	GetKitchenSummary(roundID uint) ([]models.KitchenSummary, error)
 }
 
 type orderService struct {
@@ -79,3 +80,6 @@ func (s *orderService) UpdateOrderStatus(orderID uint, newStatus string) error {
 }
 
 
+func (s *orderService) GetKitchenSummary(roundID uint) ([]models.KitchenSummary, error) {
+	return s.repo.GetKitchenSummary(roundID)
+}

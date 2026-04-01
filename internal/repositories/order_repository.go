@@ -14,6 +14,7 @@ type OrderRepository interface {
 	CreateOrder(order *models.Order, items []models.OrderItem) error
 	GetOrdersByRoundID(roundID uint) ([]models.Order, error)
 	UpdateOrderStatus(orderID uint, newStatus string) error
+	GetKitchenSummary(roundID uint) ([]models.KitchenSummary, error)
 }
 
 type orderRepository struct {
@@ -163,4 +164,22 @@ func (r *orderRepository) UpdateOrderStatus(orderID uint, newStatus string) erro
 
 	// 6. ผ่านฉลุย ยืนยันการเปลี่ยนแปลง!
 	return tx.Commit().Error
+}
+
+func (r *orderRepository) GetKitchenSummary(roundID uint) ([]models.KitchenSummary, error) {
+	var summary []models.KitchenSummary
+
+	
+	err := r.db.Table("order_items").
+		Select("menus.id as menu_id, menus.name as menu_name, SUM(order_items.quantity) as total_quantity, SUM(order_items.quantity * order_items.price_at_order) as total_revenue").
+		Joins("JOIN orders ON orders.id = order_items.order_id").
+		Joins("JOIN preorder_menus ON preorder_menus.id = order_items.preorder_menu_id").
+		Joins("JOIN menus ON menus.id = preorder_menus.menu_id").
+		Where("orders.preorder_round_id = ?", roundID).
+		Where("orders.status != ?", "cancelled"). // ไม่เอาบิลที่ยกเลิกแล้ว
+		Where("orders.deleted_at IS NULL AND order_items.deleted_at IS NULL"). // ข้ามข้อมูลที่ถูก Soft Delete
+		Group("menus.id, menus.name").
+		Scan(&summary).Error
+
+	return summary, err
 }
