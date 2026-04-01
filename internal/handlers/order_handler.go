@@ -147,7 +147,7 @@ func (h *OrderHandler) UpdateOrderStatus(c *fiber.Ctx) error {
 	// 4. ส่งให้ Service ทำงาน
 	if err := h.service.UpdateOrderStatus(uint(orderID), cleanStatus); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(), 
+			"error": err.Error(),
 		})
 	}
 
@@ -183,5 +183,29 @@ func (h *OrderHandler) GetKitchenSummary(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data": summary,
+	})
+}
+
+func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
+	idParam := c.Params("id")
+	orderID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "รูปแบบ ID ออเดอร์ไม่ถูกต้อง",
+		})
+	}
+	order, err := h.service.GetOrderById(uint(orderID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "ไม่สามารถดึงข้อมูลออเดอร์ได้",
+		})
+	}
+	if order == nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "ไม่พบออเดอร์ที่ต้องการ",
+		})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"data": order,
 	})
 }

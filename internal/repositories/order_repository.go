@@ -15,6 +15,7 @@ type OrderRepository interface {
 	GetOrdersByRoundID(roundID uint) ([]models.Order, error)
 	UpdateOrderStatus(orderID uint, newStatus string) error
 	GetKitchenSummary(roundID uint) ([]models.KitchenSummary, error)
+	GetOrderById(orderID uint) (*models.Order, error)
 }
 
 type orderRepository struct {
@@ -182,4 +183,21 @@ func (r *orderRepository) GetKitchenSummary(roundID uint) ([]models.KitchenSumma
 		Scan(&summary).Error
 
 	return summary, err
+}
+
+func(r *orderRepository) GetOrderById(orderID uint) (*models.Order, error) {
+	var order models.Order
+	err := r.db.
+		Preload("User").
+		Preload("OrderItems").
+		Preload("OrderItems.PreorderMenu").
+		Preload("OrderItems.PreorderMenu.Menu").
+		First(&order, orderID).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("ไม่พบออเดอร์ที่ต้องการ")
+		}
+		return nil, err
+	}
+	return &order, nil
 }

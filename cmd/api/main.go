@@ -4,8 +4,6 @@ import (
 	"github/folkyyyy/preorder-api/config"
 	"github/folkyyyy/preorder-api/internal/handlers"
 	"github/folkyyyy/preorder-api/internal/jobs"
-	"github/folkyyyy/preorder-api/internal/models"
-
 	_ "github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/repositories"
 	"github/folkyyyy/preorder-api/internal/routes"
@@ -28,18 +26,18 @@ func main() {
 	config.ConnectDB()
 
 	// 2.5 ทำ AutoMigrate เพื่อสร้างตาราง
-	log.Println("Running Auto Migration...")
-	err = config.DB.AutoMigrate(
-		&models.User{},
-		&models.Menu{},
-		&models.PreorderRound{},
-		&models.PreorderMenu{},
-		&models.Order{},
-		&models.OrderItem{},
-	)
-	if err != nil {
-		log.Fatal("Failed to migrate database:", err)
-	}
+	// log.Println("Running Auto Migration...")
+	// err = config.DB.AutoMigrate(
+	// 	&models.User{},
+	// 	&models.Menu{},
+	// 	&models.PreorderRound{},
+	// 	&models.PreorderMenu{},
+	// 	&models.Order{},
+	// 	&models.OrderItem{},
+	// )
+	// if err != nil {
+	// 	log.Fatal("Failed to migrate database:", err)
+	// }
 
 	jobs.StartAutoCloseJob(config.DB)
 
