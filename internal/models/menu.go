@@ -8,4 +8,7 @@ type Menu struct {
 	Description string  `json:"description"`
 	Price       float64 `gorm:"not null" json:"price"`
 	ImageURL    string  `json:"imageURL"` // เผื่อใส่รูปภาพในอนาคต
+
+	IsSpecialAllowed bool    `gorm:"default:false" json:"isSpecialAllowed"`
+	SpecialPrice     float64 `json:"specialPrice"`
 }

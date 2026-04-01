@@ -26,4 +26,6 @@ type OrderItem struct {
 	Quantity       int          `gorm:"not null" json:"quantity"`
 	Note           string       `json:"note"`         // หมายเหตุ เช่น ไม่ใส่กระเทียม
 	PriceAtOrder   float64      `json:"priceAtOrder"` // เก็บราคา ณ ตอนที่สั่ง (เผื่ออนาคตเมนูหลักขึ้นราคา บิลเก่าจะได้ไม่เพี้ยน)
+
+	IsSpecial bool `gorm:"default:false" json:"isSpecial"`
 }
