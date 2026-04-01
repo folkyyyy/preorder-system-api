@@ -21,6 +21,7 @@ type PreorderRound struct {
 	Status       Status    `gorm:"default:'open'" json:"status"` // open, closed
 	// 1 รอบ มีได้หลายเมนู
 	PreorderMenus []PreorderMenu `gorm:"foreignKey:PreorderRoundID"`
+	Orders []Order `gorm:"foreignKey:PreorderRoundID"`
 }
 
 // ตารางตรงกลาง: จัดการว่า "รอบนี้" มี "เมนูอะไรบ้าง" และรับ "อย่างละเท่าไหร่"

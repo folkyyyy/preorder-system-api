@@ -4,8 +4,7 @@ import (
 	"github/folkyyyy/preorder-api/config"
 	"github/folkyyyy/preorder-api/internal/handlers"
 	"github/folkyyyy/preorder-api/internal/jobs"
-
-	// "github/folkyyyy/preorder-api/internal/models"
+	_ "github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/repositories"
 	"github/folkyyyy/preorder-api/internal/routes"
 	"github/folkyyyy/preorder-api/internal/services"
@@ -58,11 +57,17 @@ func main() {
 	preorderRoundService := services.NewPreorderRoundService(preorderRoundRepo)
 	preorderRoundHandler := handlers.NewPreorderRoundHandler(preorderRoundService)
 
+	orderRepo := repositories.NewOrderRepository(config.DB)
+	orderService := services.NewOrderService(orderRepo, preorderRoundRepo)
+	orderHandler := handlers.NewOrderHandler(orderService)
+	// ------------------------------
+
 	// ---- Setup Routes ----
 	api := app.Group("/api")
 	routes.SetupAuthRoutes(api, authHandler)
 	routes.SetupMenuRoutes(api, menuHandler)
 	routes.SetupPreorderRoundRoutes(api, preorderRoundHandler)
+	routes.SetupOrderRoutes(api, orderHandler)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
