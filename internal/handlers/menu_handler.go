@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"github/folkyyyy/preorder-api/internal/apperrors"
 	"github/folkyyyy/preorder-api/internal/models"
 	"github/folkyyyy/preorder-api/internal/services"
 	"strconv"
@@ -29,7 +30,14 @@ func (h *MenuHandler) CreateMenu(c *fiber.Ctx) error {
 
 	// เรียกใช้ Service
 	if err := h.service.CreateMenu(&menu); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		switch {
+		case errors.Is(err, apperrors.ErrPriceNegative):
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+
+		default:
+			// ถ้าหลุดจากข้างบนมา แปลว่าเป็น Error ที่เราไม่ได้คาดคิด (เช่น DB ล่ม)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -58,6 +66,7 @@ func (h *MenuHandler) GetMenuByID(c *fiber.Ctx) error {
 
 	menu, err := h.service.GetMenuByID(uint(menuid))
 	if err != nil {
+
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "ไม่มีข้อมูลเมนูที่ต้องการ", // หาเมนูนี้ไม่เจอ! (ส่ง 404 กลับไป)
@@ -81,12 +90,20 @@ func (h *MenuHandler) UpdateMenu(c *fiber.Ctx) error {
 	menu.ID = uint(Menuid)
 	// เรียกใช้ Service
 	if err := h.service.UpdateMenu(&menu); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		switch {
+		case errors.Is(err, apperrors.ErrPriceNegative):
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+
+		case errors.Is(err, gorm.ErrRecordNotFound):
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "ไม่มีข้อมูลเมนูที่ต้องการ", // หาเมนูนี้ไม่เจอ! (ส่ง 404 กลับไป)
 			})
+
+		default:
+			// ถ้าหลุดจากข้างบนมา แปลว่าเป็น Error ที่เราไม่ได้คาดคิด (เช่น DB ล่ม)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -111,5 +128,5 @@ func (h *MenuHandler) DeleteMenu(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(fiber.Map{"message": "ลบเมนูสำเร็จ"})
+	return c.Status(fiber.StatusNoContent).Send(nil)
 }
